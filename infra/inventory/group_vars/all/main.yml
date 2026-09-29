@@ -1,0 +1,51 @@
+---
+# ── Администратор хоста ──────────────────────────────────────────────────
+# Создаётся ролью base; дальнейшие прогоны ansible идут от него.
+admin_user: deploy
+admin_ssh_pubkey_path: "~/.ssh/id_ed25519.pub"
+
+# ── Домен ────────────────────────────────────────────────────────────────
+# Один домен, экземпляры ompweb разведены по портам:
+#   https://agents.example.com:30181 → пользователь alice и т.д.
+# Нужна A-запись omp_domain → IP VPS.
+omp_domain: agents.example.com
+caddy_email: admin@example.com
+
+# Диапазон портов, открываемый в UFW. Должен покрывать порты всех пользователей
+# и filebrowser_port.
+ompweb_port_range: "30000:31000"
+
+# ── filebrowser: веб-доступ к home-каталогам ─────────────────────────────
+# Один инстанс на хост: https://<домен>:<filebrowser_port>, у каждого
+# пользователя свой аккаунт со scope /home/<name>. Пароль — тот же, что
+# в ompweb (vault.yml → omp_web_passwords). Обновление — bump версии ниже.
+filebrowser_port: 30200
+filebrowser_version: "2.63.23"
+
+# ── Пользователи ─────────────────────────────────────────────────────────
+# Каждый получает: linux-пользователя, ~/.omp/agent, systemd-сервис
+# ompweb@<name> на своём порту, сайт в Caddy. Пароли — в vault.yml
+# (ключ omp_web_passwords). Сам список — переменная omp_users в users.yml
+# (генерирует setup-wizard; формат — см. users.yml.example).
+
+# ── Мониторинг (центральный сервер) ──────────────────────────────────────
+# Grafana/Kuma живут на отдельном сервере; сюда alloy шлёт метрики и логи.
+monitoring_prometheus_url: "https://prometheus.monitoring.example.com/api/v1/write"
+monitoring_loki_url: "https://loki.monitoring.example.com/loki/api/v1/push"
+
+# ── Бэкапы ───────────────────────────────────────────────────────────────
+backup_dir: /var/backups/omp
+backup_keep_days: 14
+
+server_timezone: UTC
+
+# Глобальный git-конфиг, применяемый каждому пользователю при создании.
+# NB: side-by-side — это опция delta (delta.side-by-side), не core-ключ git.
+git_user_settings:
+  - {name: init.defaultBranch, value: main}
+  - {name: core.pager, value: delta}
+  - {name: interactive.diffFilter, value: "delta --color-only"}
+  - {name: delta.navigate, value: "true"}
+  - {name: delta.side-by-side, value: "true"}
+  - {name: merge.conflictStyle, value: zdiff3}
+  - {name: core.fileMode, value: "false"}

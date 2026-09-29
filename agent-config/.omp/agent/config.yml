@@ -1,0 +1,127 @@
+modelRoles:
+  judge: jev-decisions/jev-1.13
+  smol: surplus/gemini-3.8-flash:medium
+  tiny: surplus/deepseek-v4.1-flash:low
+  task: surplus/glm-5.3-flash:low
+  advisor: surplus/glm-5.3-flash:low
+  plan: surplus/gpt-5.6-sol:high
+  commit: surplus/deepseek-v4.1-flash:low
+  slow: surplus/gpt-5.6-sol:high
+  web: web/duckduckgo
+  default: surplus/kimi-k3:high
+symbolPreset: nerd
+composer:
+  shape: claude
+theme:
+  dark: titanium
+  light: light
+setupVersion: 2
+memory:
+  backend: mnemopi
+plan:
+  enabled: true
+task:
+  eager: default
+  isolation:
+    enabled: false
+  enableEffort: false
+  agentModelOverrides:
+    svelte-file-editor: surplus/deepseek-v4.1-flash
+sharpshooter:
+  model: ""
+autolearn:
+  enabled: false
+  autoContinue: true
+display:
+  showTokenUsage: false
+  cacheMissMarker: true
+  shimmer: kitt
+statusLine:
+  preset: custom
+  separator: slash
+  leftSegments:
+    - model
+    - mode
+    - path
+    - git
+    - pr
+    - subagents
+  rightSegments:
+    - cost
+    - context_pct
+    - cache_hit
+    - token_rate
+  segmentOptions:
+    model:
+      showThinkingLevel: true
+    path:
+      abbreviate: true
+      maxLength: 25
+      stripWorkPrefix: true
+    git:
+      showBranch: true
+      showStaged: false
+      showUnstaged: false
+      showUntracked: false
+    time:
+      format: 24h
+      showSeconds: false
+  sessionAccent: true
+  transparent: false
+  compactThinkingLevel: false
+  showHookStatus: true
+  contextLine: "off"
+astGrep:
+  enabled: true
+security:
+  enabled: true
+edit:
+  mode: hashline
+dev:
+  autoqa: false
+steeringMode: one-at-a-time
+interruptMode: immediate
+cycleOrder:
+  - smol
+  - default
+  - slow
+hideThinkingBlock: false
+read:
+  renderMarkdown: true
+  summarize:
+    prose: true
+retry:
+  fallbackChains:
+    web:
+      - web/jina
+      - web/kagi
+      - web/tavily
+      - web/brave
+      - web/parallel
+      - web/synthetic
+      - web/searxng
+      - web/startpage
+      - web/ecosia
+      - web/google
+      - web/mojeek
+      - web/public
+      - web/ollama
+enabledProviders:
+  - claude-plugins
+personality: pragmatic
+browser:
+  relay: true
+disabledExtensions:
+  []
+todo:
+  reminders: false
+snapcompact:
+  shape: auto
+tools:
+  format: auto
+enabledModels:
+  []
+modelProviderOrder:
+  - surplus
+  - cheapference
+defaultThinkingLevel: auto

@@ -1,0 +1,17 @@
+{
+	email {{ caddy_email }}
+}
+
+# Один домен, каждый пользователь — на своём порту.
+# ACME HTTP-01 challenge обслуживается Caddy автоматически (нужен открытый 80/tcp).
+{% for u in omp_users %}
+{{ omp_domain }}:{{ u.port }} {
+	reverse_proxy 127.0.0.1:{{ u.port }}
+}
+
+{% endfor %}
+# filebrowser: общий инстанс, аккаунты разграничены внутри сервиса.
+{{ omp_domain }}:{{ filebrowser_port }} {
+	reverse_proxy 127.0.0.1:{{ filebrowser_port }}
+}
+

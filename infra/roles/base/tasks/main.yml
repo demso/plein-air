@@ -1,0 +1,146 @@
+---
+- name: Update apt cache and install base packages
+  ansible.builtin.apt:
+    name:
+      - curl
+      - wget
+      - unzip
+      - ca-certificates
+      - gnupg
+      - git
+      - git-lfs
+      - python3
+      - python3-dev
+      - python3-venv
+      - python3-pip
+      - python-is-python3
+      - ufw
+      - unattended-upgrades
+      - htop
+      - tmux
+      - jq
+      - tar
+      - logrotate
+    update_cache: true
+    state: present
+
+- name: Enable git-lfs system-wide
+  ansible.builtin.command: git lfs install --system
+  changed_when: false
+
+- name: Install git-delta
+  ansible.builtin.apt:
+    name: git-delta
+    state: present
+
+- name: Create admin user
+  ansible.builtin.user:
+    name: "{{ admin_user }}"
+    shell: /bin/bash
+    groups: sudo
+    append: true
+    create_home: true
+
+- name: Authorize admin SSH key
+  ansible.posix.authorized_key:
+    user: "{{ admin_user }}"
+    key: "{{ lookup('file', admin_ssh_pubkey_path) }}"
+    state: present
+
+- name: Allow passwordless sudo for admin
+  ansible.builtin.copy:
+    dest: "/etc/sudoers.d/90-{{ admin_user }}"
+    content: "{{ admin_user }} ALL=(ALL) NOPASSWD:ALL\n"
+    mode: "0440"
+    validate: "visudo -cf %s"
+
+- name: Set timezone
+  community.general.timezone:
+    name: "{{ server_timezone }}"
+
+# SSH-харденинг — только ПОСЛЕ создания admin_user с ключом.
+- name: Harden sshd
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/90-omp-hardening.conf
+    content: |
+      PasswordAuthentication no
+      PermitRootLogin no
+      KbdInteractiveAuthentication no
+    mode: "0644"
+    validate: "sshd -t -f %s"
+  notify: Restart sshd
+
+- name: Ensure sshd config.d is included (Ubuntu)
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^Include /etc/ssh/sshd_config.d/\\*.conf"
+    line: "Include /etc/ssh/sshd_config.d/*.conf"
+    insertbefore: BOF
+  notify: Restart sshd
+
+- name: UFW — default deny incoming, allow outgoing
+  community.general.ufw:
+    direction: "{{ item.direction }}"
+    policy: "{{ item.policy }}"
+  loop:
+    - { direction: incoming, policy: deny }
+    - { direction: outgoing, policy: allow }
+
+- name: UFW — allow SSH, HTTP(S) for ACME, ompweb port range
+  community.general.ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop:
+    - "22"
+    - "80"
+    - "443"
+    - "{{ ompweb_port_range }}"
+
+- name: UFW — enable
+  community.general.ufw:
+    state: enabled
+
+- name: Enable unattended upgrades
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+    mode: "0644"
+
+- name: Check for existing swap
+  ansible.builtin.command: swapon --show --noheadings
+  register: swap_status
+  changed_when: false
+  failed_when: false
+
+- name: Create 512M swapfile when no swap exists
+  when: swap_status.stdout == ""
+  block:
+    - name: Allocate swapfile
+      ansible.builtin.command: fallocate -l 512M /swapfile
+      args:
+        creates: /swapfile
+
+    - name: Secure swapfile
+      ansible.builtin.file:
+        path: /swapfile
+        mode: "0600"
+
+    - name: Format swapfile
+      ansible.builtin.command: mkswap /swapfile
+      register: mkswap_result
+      changed_when: "'UUID' in mkswap_result.stdout"
+
+    - name: Enable swapfile
+      ansible.builtin.command: swapon /swapfile
+      when: mkswap_result is changed
+
+    - name: Persist swapfile in fstab
+      ansible.builtin.mount:
+        path: none
+        src: /swapfile
+        fstype: swap
+        opts: defaults
+        state: present

@@ -1,0 +1,11 @@
+# Скопируй в hosts.ini (setup-wizard.sh сделает это сам).
+# Первый прогон — от root (или любого sudo-пользователя с паролем):
+#   ansible-playbook site.yml -k
+# После роли base на хосте появится admin_user (deploy) с твоим SSH-ключом,
+# root по паролю будет закрыт — переключи ansible_user на deploy.
+
+[omp_vps]
+vps ansible_host=1.2.3.4 ansible_user=root
+
+[omp_vps:vars]
+ansible_python_interpreter=/usr/bin/python3

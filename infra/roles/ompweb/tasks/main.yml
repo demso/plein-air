@@ -1,0 +1,102 @@
+---
+# Мульти-инстанс ompweb: на каждого пользователя из omp_users —
+# linux-user, ~/.omp/agent, systemd-сервис ompweb@<name> (свой порт),
+# сайт в Caddy на https://{{ omp_domain }}:<port>.
+
+- name: Assert every user has a password in vault
+  ansible.builtin.assert:
+    that:
+      - "item.name in omp_web_passwords"
+      - "omp_web_passwords[item.name] | length > 0"
+    fail_msg: "Нет пароля для {{ item.name }}: добавь в vault.yml → omp_web_passwords.{{ item.name }}"
+  loop: "{{ omp_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Create linux users for omp instances
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    shell: /bin/bash
+    create_home: true
+  loop: "{{ omp_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Seed agent config skeletons (.agents, .omp) per user
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/agent-config/"
+    dest: "/home/{{ item.name }}/"
+    owner: "{{ item.name }}"
+    group: "{{ item.name }}"
+    mode: "u=rwX,go="
+    force: false  # существующие файлы (сессии, правки юзера) не затираем
+  loop: "{{ omp_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Create ~/.omp and ~/.omp/agent per user
+  ansible.builtin.file:
+    path: "/home/{{ item.0.name }}/{{ item.1 }}"
+    state: directory
+    owner: "{{ item.0.name }}"
+    group: "{{ item.0.name }}"
+    mode: "0700"
+  loop: "{{ omp_users | product(['.omp', '.omp/agent']) | list }}"
+  loop_control:
+    label: "{{ item.0.name }}:{{ item.1 }}"
+
+- name: Apply per-user git settings
+  community.general.git_config:
+    name: "{{ item[1].name }}"
+    value: "{{ item[1].value }}"
+    scope: global
+  loop: "{{ omp_users | product(git_user_settings) | list }}"
+  loop_control:
+    label: "{{ item[0].name }}: {{ item[1].name }}"
+  become: true
+  become_user: "{{ item[0].name }}"
+
+- name: Deploy per-user web-service.env
+  ansible.builtin.template:
+    src: web-service.env.j2
+    dest: "/home/{{ item.name }}/.omp/agent/web-service.env"
+    owner: "{{ item.name }}"
+    group: "{{ item.name }}"
+    mode: "0600"
+  loop: "{{ omp_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+  notify: Restart ompweb instances
+
+- name: Install ompweb@ systemd unit template
+  ansible.builtin.template:
+    src: ompweb@.service.j2
+    dest: /etc/systemd/system/ompweb@.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Enable and start ompweb instance per user
+  ansible.builtin.systemd:
+    name: "ompweb@{{ item.name }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  loop: "{{ omp_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+# ── Health-check: каждый инстанс отвечает локально ──────────────────────
+
+- name: Wait for ompweb instance to answer on localhost
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ item.port }}/"
+    status_code: [200, 401, 302]
+  loop: "{{ omp_users }}"
+  loop_control:
+    label: "{{ item.name }}:{{ item.port }}"
+  register: ompweb_health
+  retries: 10
+  delay: 3
+  until: ompweb_health.status is defined

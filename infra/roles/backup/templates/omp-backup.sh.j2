@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+DEST="{{ backup_dir }}"
+TS="$(date +%Y%m%d-%H%M%S)"
+ARCHIVE="$DEST/omp-$TS.tar.gz"
+
+mkdir -p "$DEST"
+
+# Состояние omp/ompweb всех пользователей + конфиг Caddy.
+tar czf "$ARCHIVE" \
+  --ignore-failed-read \
+  /home/*/.omp /etc/caddy 2>/dev/null || true
+
+find "$DEST" -name 'omp-*.tar.gz' -mtime +{{ backup_keep_days }} -delete
+
+echo "backup written: $ARCHIVE"

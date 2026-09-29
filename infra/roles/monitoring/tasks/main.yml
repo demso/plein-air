@@ -1,0 +1,50 @@
+---
+# Метрики и логи уходят на ЦЕНТРАЛЬНЫЙ сервер мониторинга (там Grafana/Kuma).
+# Здесь: node_exporter (метрики хоста) + Grafana Alloy (агент-доставка).
+
+- name: Add Grafana GPG key
+  ansible.builtin.get_url:
+    url: https://apt.grafana.com/gpg.key
+    dest: /usr/share/keyrings/grafana.gpg
+    mode: "0644"
+
+- name: Add Grafana apt repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/grafana.gpg] https://apt.grafana.com stable main"
+    filename: grafana
+    state: present
+
+- name: Install alloy and node_exporter
+  ansible.builtin.apt:
+    name:
+      - alloy
+      - prometheus-node-exporter
+    update_cache: true
+    state: present
+
+- name: Deploy alloy config
+  ansible.builtin.template:
+    src: config.alloy.j2
+    dest: /etc/alloy/config.alloy
+    owner: root
+    group: alloy
+    mode: "0640"
+  notify: Restart alloy
+
+- name: Deploy alloy environment (monitoring credentials)
+  ansible.builtin.template:
+    src: alloy.env.j2
+    dest: /etc/default/alloy
+    owner: root
+    group: alloy
+    mode: "0640"
+  notify: Restart alloy
+
+- name: Enable alloy and node_exporter
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop:
+    - alloy
+    - prometheus-node-exporter

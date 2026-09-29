@@ -1,0 +1,56 @@
+---
+# Глобальные рантаймы: Node.js 22 (ompweb — Next.js), bun (требование omp ≥ 1.3.14).
+# Всё ставится системно, бинари в /usr/bin и /usr/local/bin — на PATH у всех.
+
+# Node.js — штатный пакет Ubuntu 26.04 (22.19.15+, покрывает требование
+# ompweb >= 22.19.0); NodeSource не нужен. npm — отдельным пакетом.
+- name: Install Node.js and npm
+  ansible.builtin.apt:
+    name:
+      - nodejs
+      - npm
+    update_cache: true
+    state: present
+
+- name: Verify Node version meets ompweb requirement (>= 22.19.0)
+  ansible.builtin.command: node --version
+  register: node_version
+  changed_when: false
+
+- name: Fail if Node is too old for ompweb
+  ansible.builtin.assert:
+    that:
+      - (node_version.stdout | regex_replace('^v', '')) is version("22.19.0", ">=")
+    fail_msg: "Node {{ node_version.stdout }} старше, чем нужно ompweb (>= 22.19.0)"
+
+- name: Install bun system-wide (/usr/local/bin/bun)
+  ansible.builtin.shell: curl -fsSL https://bun.sh/install | bash
+  environment:
+    BUN_INSTALL: /usr/local
+  args:
+    creates: /usr/local/bin/bun
+
+- name: Install omp and ompweb globally
+  community.general.npm:
+    name: "{{ item }}"
+    global: true
+    state: present
+  loop:
+    - "@oh-my-pi/pi-coding-agent"
+    - "@kahme247/ompweb"
+
+- name: Verify global binaries on PATH (soft check)
+  ansible.builtin.command: "command -v {{ item }}"
+  loop:
+    - ompweb
+    - omp
+    - bun
+  register: runtime_paths
+  changed_when: false
+  failed_when: false
+
+- name: Warn if a runtime is missing
+  ansible.builtin.debug:
+    msg: "ВНИМАНИЕ: {{ item.item }} не найден на PATH — проверь установку вручную"
+  loop: "{{ runtime_paths.results }}"
+  when: item.rc != 0

@@ -1,0 +1,6 @@
+[Unit]
+Description=Backup omp state (~/.omp of all users)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/omp-backup.sh

@@ -1,0 +1,13 @@
+---
+# Скопируй в vault.yml (или сгенерирует setup-wizard.sh), затем зашифруй:
+#   ansible-vault encrypt inventory/group_vars/all/vault.yml
+
+# Пароль веб-входа для каждого пользователя из omp_users.
+# Используется и в ompweb, и в filebrowser.
+omp_web_passwords:
+  alice: "change-me-alice"
+  bob: "change-me-bob"
+
+# Basic auth на центральном мониторинге (пустые строки = без auth).
+monitoring_username: ""
+monitoring_password: ""

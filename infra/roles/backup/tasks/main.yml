@@ -1,0 +1,38 @@
+---
+# Ежедневный tar-бэкап ~/.omp всех пользователей + /etc/caddy → backup_dir,
+# ротация по backup_keep_days. Для offsite-копии — см. README (restic/rclone).
+
+- name: Create backup directory
+  ansible.builtin.file:
+    path: "{{ backup_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Install backup script
+  ansible.builtin.template:
+    src: omp-backup.sh.j2
+    dest: /usr/local/bin/omp-backup.sh
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Install backup systemd units
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - omp-backup.service
+    - omp-backup.timer
+  notify: Reload systemd
+
+- name: Enable backup timer
+  ansible.builtin.systemd:
+    name: omp-backup.timer
+    enabled: true
+    state: started
+    daemon_reload: true

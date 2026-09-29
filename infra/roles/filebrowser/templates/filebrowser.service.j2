@@ -1,0 +1,17 @@
+[Unit]
+Description=filebrowser — веб-доступ к home-каталогам пользователей
+Documentation=https://filebrowser.org
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Root нужен: сервис отдаёт файлы из /home/* разных пользователей.
+# Доступ внутри разграничивает сам filebrowser (scope аккаунта).
+ExecStart=/usr/local/bin/filebrowser -d /etc/filebrowser/filebrowser.db
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,48 @@
+// omp VPS → центральный мониторинг (Prometheus remote_write + Loki).
+// Учётные данные — в /etc/default/alloy (MON_USERNAME/MON_PASSWORD).
+
+prometheus.scrape "node" {
+	targets = [{
+		__address__ = "127.0.0.1:9100",
+		instance    = "{{ ansible_facts.hostname }}",
+	}]
+	scrape_interval = "30s"
+	forward_to      = [prometheus.remote_write.central.receiver]
+}
+
+prometheus.remote_write "central" {
+	endpoint {
+		url = "{{ monitoring_prometheus_url }}"
+		basic_auth {
+			username = sys.env("MON_USERNAME")
+			password = sys.env("MON_PASSWORD")
+		}
+	}
+}
+
+loki.source.journal "system" {
+	max_age       = "12h"
+	forward_to    = [loki.write.central.receiver]
+	relabel_rules = loki.relabel.systemd.rules
+	labels = {
+		job  = "systemd-journal",
+		host = "{{ ansible_facts.hostname }}",
+	}
+}
+
+loki.relabel "systemd" {
+	rule {
+		source_labels = ["__journal__systemd_unit"]
+		target_label  = "unit"
+	}
+}
+
+loki.write "central" {
+	endpoint {
+		url = "{{ monitoring_loki_url }}"
+		basic_auth {
+			username = sys.env("MON_USERNAME")
+			password = sys.env("MON_PASSWORD")
+		}
+	}
+}

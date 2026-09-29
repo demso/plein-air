@@ -1,0 +1,249 @@
+providers:
+  cheapference:
+    baseUrl: https://api.cheaperinference.com/v1
+    api: openai-completions
+    apiKey: CHEAP_API_KEY
+    models:
+      - id: deepseek-v4-flash-0731
+        name: DS V4 Flash 0731
+      - id: gpt-5.6-luna
+        name: GPT 5.6 Luna
+  jev-decisions:
+    baseUrl: https://api.surplusintelligence.ai/v1
+    api: openrouter-decisions
+    apiKey: SURPLUS_KEY
+    models:
+      - id: jev-1.13
+        name: JEV 1.13 TypeSafe (surplus decisions)
+        contextWindow: 32000
+        maxTokens: 4096
+  surplus:
+    baseUrl: https://api.surplusintelligence.ai/v1
+    api: openai-completions
+    apiKey: SURPLUS_KEY
+    headers:
+      X-Min-Discount: '40'
+    models:
+      - id: glm-5.3-flash
+        name: GLM-5.3-Flash (surplus)
+        reasoning: true
+        input: [ text, image ]
+        contextWindow: 1048576
+        maxTokens: 131072
+        compat:
+          extraBody:
+            min_discount_pct: 60
+
+      - id: deepseek-v4.1-flash
+        name: DeepSeek V4.1 Flash (surplus)
+        reasoning: true
+        input: [ text, image ]
+        contextWindow: 1048576
+        maxTokens: 384000
+        compat:
+          extraBody:
+            min_discount_pct: 60
+
+      - id: kimi-k2.7-code
+        name: Kimi K2.7 Code (surplus)
+        reasoning: true
+        input: [ text ]
+        contextWindow: 262144
+        maxTokens: 262144
+        compat:
+          extraBody:
+            providers_blocked: [ inferhub ]
+            min_discount_pct: 90
+            si_route:
+              objective: price
+
+      - id: minimax-m3
+        name: MiniMax M3 (surplus)
+        reasoning: false
+        input: [ text ]
+        contextWindow: 200000
+        maxTokens: 32768
+        compat:
+          extraBody:
+            min_discount_pct: 80
+
+      - id: gpt-5.6-luna
+        name: GPT-5.6 Luna (surplus)
+        reasoning: true
+        input: [ text, image ]
+        contextWindow: 1050000
+        maxTokens: 128000
+        compat:
+          extraBody:
+            providers_blocked: [ inferhub ]
+            min_discount_pct: 70
+
+      - id: gpt-5.6-terra
+        name: GPT-5.6 Terra (surplus)
+        reasoning: true
+        input: [ text, image ]
+        contextWindow: 1050000
+        maxTokens: 128000
+        compat:
+          extraBody:
+            min_discount_pct: 95
+            si_route:
+              objective: price
+
+      - id: kimi-k3
+        name: Kimi K3 (surplus)
+        reasoning: true
+        input: [ text, image ]
+        contextWindow: 1050000
+        maxTokens: 262144
+        compat:
+          extraBody:
+            min_discount_pct: 96
+            si_route:
+              objective: price
+
+      - id: gpt-5.6-sol
+        name: GPT-5.6 Sol (surplus)
+        reasoning: true
+        input: [ text, image ]
+        contextWindow: 1050000
+        maxTokens: 128000
+        compat:
+          extraBody:
+            min_discount_pct: 98
+            provider: [ inferhub ]
+            si_route:
+              objective: price
+
+      - id: gpt-6-astra
+        name: GPT-6 Astra (surplus)
+        reasoning: true
+        input: [ text, image ]
+        contextWindow: 1050000
+        maxTokens: 128000
+        compat:
+          extraBody:
+            min_discount_pct: 97
+            provider: [ inferhub ]
+            si_route:
+              objective: price
+
+      - id: gpt-6-luna
+        name: GPT-6 Luna (surplus)
+        reasoning: true
+        input: [ text, image ]
+        contextWindow: 1050000
+        maxTokens: 128000
+        compat:
+          extraBody:
+            providers_blocked: [ inferhub ]
+            min_discount_pct: 60
+
+      - id: gpt-6-sol
+        name: GPT-6 Sol (surplus)
+        reasoning: true
+        input: [ text, image ]
+        contextWindow: 1050000
+        maxTokens: 128000
+        compat:
+          extraBody:
+            min_discount_pct: 98
+            provider: [ inferhub ]
+            si_route:
+              objective: price
+
+      - id: gemini-3.1-flash-lite
+        name: Gemini 3.1 Flash Lite (surplus)
+        api: openai-completions
+        reasoning: false
+        input: [ text, image ]
+        contextWindow: 1048576
+        maxTokens: 65536
+        headers:
+          X-Min-Discount: '75'
+        compat:
+          supportsStore: false
+
+      - id: gemini-3-5-flash
+        name: Gemini 3.5 Flash (surplus)
+        api: openai-completions
+        reasoning: false
+        input: [ text, image ]
+        contextWindow: 1000000
+        maxTokens: 65536
+        headers:
+          X-Min-Discount: '96'
+        compat:
+          supportsStore: false
+
+      - id: qwen3.8-flash
+        name: Qwen3.8 Flash (surplus)
+        api: openai-completions
+        reasoning: true
+        input: [ text, image ]
+        contextWindow: 1000000
+        maxTokens: 131072
+        headers:
+          X-Min-Discount: '70'
+
+      - id: mistral-large-3
+        name: Mistral Large 3 (surplus)
+        api: openai-completions
+        reasoning: false
+        input: [ text, image ]
+        contextWindow: 256000
+        maxTokens: 32000
+        headers:
+          X-Min-Discount: '75'
+
+      - id: gemini-3.7-flash
+        name: Gemini 3.7 Flash (surplus)
+        api: openai-completions
+        reasoning: true
+        input: [ text, image ]
+        contextWindow: 1048576
+        maxTokens: 65536
+        headers:
+          X-Min-Discount: '90'
+        compat:
+          supportsStore: false
+          extraBody:
+            providers_blocked: [ inferhub ]
+
+      - id: gemini-3.8-flash
+        name: Gemini 3.8 Flash (surplus)
+        api: openai-completions
+        reasoning: true
+        input: [ text, image ]
+        contextWindow: 1048576
+        maxTokens: 65536
+        headers:
+          X-Min-Discount: '95'
+        compat:
+          supportsStore: false
+          
+      - id: claude-opus-4.6
+        name: Claude Opus 4.6 (surplus)
+        reasoning: true
+        input: [ text, image ]
+        contextWindow: 1000000
+        maxTokens: 128000
+        compat:
+          extraBody:
+            min_discount_pct: 98
+            
+      - id: jev-1.13
+        name: JEV 1.13 TypeSafe (surplus)
+        reasoning: false
+        input: [ text ]
+        contextWindow: 32000
+        maxTokens: 4096
+
+      - id: qwen-3-8-max
+        name: Qwen 3.8 Max (surplus)
+        api: openai-completions
+        input: [ text ]
+        contextWindow: 1000000
+        maxTokens: 131072
+        headers:
+          X-Min-Discount: '90'

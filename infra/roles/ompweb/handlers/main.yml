@@ -1,0 +1,13 @@
+---
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart ompweb instances
+  ansible.builtin.systemd:
+    name: "ompweb@{{ item.name }}"
+    state: restarted
+  loop: "{{ omp_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+  listen: Restart ompweb instances

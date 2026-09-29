@@ -1,0 +1,7 @@
+# Секреты и локальное состояние — в репозиторий не коммитить
+inventory/hosts.ini
+inventory/group_vars/all/users.yml
+inventory/group_vars/all/vault.yml
+inventory/group_vars/all/zz-local.yml
+scripts/.env
+*.retry

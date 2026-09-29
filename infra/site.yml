@@ -1,0 +1,19 @@
+---
+- name: Provision omp/ompweb VPS
+  hosts: omp_vps
+  become: true
+  pre_tasks:
+    - name: Require users list
+      ansible.builtin.assert:
+        that:
+          - omp_users is defined
+          - omp_users | length > 0
+        fail_msg: "Список пользователей пуст: создай inventory/group_vars/all/users.yml (запусти scripts/setup-wizard.sh)"
+  roles:
+    - base
+    - runtimes
+    - ompweb
+    - filebrowser
+    - caddy
+    - monitoring
+    - backup

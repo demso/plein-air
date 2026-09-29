@@ -1,0 +1,8 @@
+# Список пользователей omp/ompweb. Генерирует scripts/setup-wizard.sh,
+# либо заполни вручную и сохрани как users.yml (без .example).
+# Порты должны попадать в ompweb_port_range из main.yml.
+omp_users:
+  - name: alice
+    port: 30181
+  - name: bob
+    port: 30182

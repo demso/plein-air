@@ -1,0 +1,50 @@
+---
+# Edge-слой: TLS (ACME) + reverse proxy ко всем сервисам хоста
+# (ompweb-инстансы пользователей, filebrowser).
+# Установка — по официальной инструкции:
+# https://caddyserver.com/docs/install#debian-ubuntu-raspbian
+
+- name: Fetch Caddy GPG key (armored)
+  ansible.builtin.get_url:
+    url: https://dl.cloudsmith.io/public/caddy/stable/gpg.key
+    dest: /tmp/caddy-stable.gpg.key
+    mode: "0644"
+
+- name: Dearmor Caddy GPG key
+  ansible.builtin.command:
+    cmd: gpg --batch --yes --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg /tmp/caddy-stable.gpg.key
+  args:
+    creates: /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+
+- name: Add Caddy apt repository (официальный sources-файл)
+  ansible.builtin.get_url:
+    url: https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt
+    dest: /etc/apt/sources.list.d/caddy-stable.list
+    mode: "0644"
+  register: caddy_repo
+
+- name: Update apt cache after adding Caddy repo
+  ansible.builtin.apt:
+    update_cache: true
+  when: caddy_repo is changed
+
+- name: Install Caddy
+  ansible.builtin.apt:
+    name: caddy
+    state: present
+
+- name: Deploy Caddyfile
+  ansible.builtin.template:
+    src: Caddyfile.j2
+    dest: /etc/caddy/Caddyfile
+    owner: root
+    group: root
+    mode: "0644"
+    validate: "caddy validate --adapter caddyfile --config %s"
+  notify: Restart caddy
+
+- name: Ensure Caddy is running
+  ansible.builtin.systemd:
+    name: caddy
+    enabled: true
+    state: started

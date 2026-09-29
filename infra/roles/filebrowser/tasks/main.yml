@@ -1,0 +1,120 @@
+---
+# Один инстанс filebrowser на хост: каждому пользователю из omp_users —
+# свой аккаунт, ограниченный /home/<name>. URL: https://{{ omp_domain }}:{{ filebrowser_port }}.
+# Пароль = пароль ompweb (vault.yml → omp_web_passwords). Управление аккаунтами: CLI на хосте.
+
+# Пароль filebrowser = паролю ompweb, отдельного ключа в vault нет.
+# Проверка наличия паролей — в роли ompweb, здесь не дублируем.
+
+- name: Detect installed filebrowser version
+  ansible.builtin.command: /usr/local/bin/filebrowser version
+  register: fb_version
+  changed_when: false
+  failed_when: false
+
+- name: Download filebrowser binary
+  when: fb_version.rc != 0 or filebrowser_version not in fb_version.stdout
+  block:
+    - name: Fetch release tarball
+      ansible.builtin.get_url:
+        url: "https://github.com/filebrowser/filebrowser/releases/download/v{{ filebrowser_version }}/linux-amd64-filebrowser.tar.gz"
+        dest: /tmp/filebrowser.tar.gz
+        mode: "0644"
+      register: fb_download
+
+    - name: Extract binary
+      ansible.builtin.unarchive:
+        src: /tmp/filebrowser.tar.gz
+        dest: /tmp/filebrowser-dist
+        remote_src: true
+        creates: /tmp/filebrowser-dist/filebrowser
+
+    - name: Install binary
+      ansible.builtin.copy:
+        src: /tmp/filebrowser-dist/filebrowser
+        dest: /usr/local/bin/filebrowser
+        remote_src: true
+        mode: "0755"
+      notify: Restart filebrowser
+
+- name: Create filebrowser config directory
+  ansible.builtin.file:
+    path: /etc/filebrowser
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Init filebrowser database
+  ansible.builtin.command: >-
+    /usr/local/bin/filebrowser config init
+    -d /etc/filebrowser/filebrowser.db
+  args:
+    creates: /etc/filebrowser/filebrowser.db
+
+- name: Configure listener and branding
+  ansible.builtin.command: >-
+    /usr/local/bin/filebrowser config set
+    -d /etc/filebrowser/filebrowser.db
+    --address 127.0.0.1
+    --port {{ filebrowser_port }}
+    --branding.name "plein-air files"
+  changed_when: false
+
+- name: List existing filebrowser users
+  ansible.builtin.command: /usr/local/bin/filebrowser users ls -d /etc/filebrowser/filebrowser.db
+  register: fb_users
+  changed_when: false
+
+- name: Remove default admin account (управление — через CLI на хосте)
+  ansible.builtin.command: /usr/local/bin/filebrowser users rm admin -d /etc/filebrowser/filebrowser.db
+  when: "'| admin |' in fb_users.stdout"
+
+- name: Add missing per-user accounts
+  ansible.builtin.command: >-
+    /usr/local/bin/filebrowser users add {{ item.name }} {{ omp_web_passwords[item.name] | quote }}
+    --scope /home/{{ item.name }}
+    -d /etc/filebrowser/filebrowser.db
+  loop: "{{ omp_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: ("| " + item.name + " |") not in fb_users.stdout
+  no_log: true
+
+- name: Keep scope and password in sync for existing accounts
+  ansible.builtin.command: >-
+    /usr/local/bin/filebrowser users update {{ item.name }}
+    --password {{ omp_web_passwords[item.name] | quote }}
+    --scope /home/{{ item.name }}
+    -d /etc/filebrowser/filebrowser.db
+  loop: "{{ omp_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: ("| " + item.name + " ") in fb_users.stdout
+  changed_when: false
+  no_log: true
+
+- name: Install systemd unit
+  ansible.builtin.template:
+    src: filebrowser.service.j2
+    dest: /etc/systemd/system/filebrowser.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart filebrowser
+
+- name: Enable and start filebrowser
+  ansible.builtin.systemd:
+    name: filebrowser
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Wait for filebrowser health endpoint
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ filebrowser_port }}/health"
+    status_code: 200
+  register: fb_health
+  retries: 10
+  delay: 3
+  until: fb_health.status is defined
